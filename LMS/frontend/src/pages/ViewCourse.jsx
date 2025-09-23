@@ -24,7 +24,6 @@ function ViewCourse() {
     const {lectureData} = useSelector(state=>state.lecture)
     const {selectedCourseData} = useSelector(state=>state.course)
   const [selectedCreatorCourse,setSelectedCreatorCourse] = useState([])
-   const [isEnrolled, setIsEnrolled] = useState(false);
    const [rating, setRating] = useState(0);
    const [comment, setComment] = useState("");
    
@@ -73,20 +72,9 @@ console.log("Average Rating:", avgRating);
     })
 
   }
-    const checkEnrollment = () => {
-  const verify = userData?.enrolledCourses?.some(c => {
-    const enrolledId = typeof c === 'string' ? c : c._id;
-    return enrolledId?.toString() === courseId?.toString();
-  });
 
-  console.log("Enrollment verified:", verify);
-  if (verify) {
-    setIsEnrolled(true);
-  }
-};
   useEffect(() => {
     fetchCourseData()
-    checkEnrollment()
   }, [courseId,courseData,lectureData])
 
 
@@ -127,50 +115,6 @@ console.log("Average Rating:", avgRating);
   
   }
 }, [creatorData, courseData]);
-
- 
-const handleEnroll = async (courseId, userId) => {
-  try {
-    // 1. Create Order
-    const orderData = await axios.post(serverUrl + "/api/payment/create-order", {
-      courseId,
-      userId
-    } , {withCredentials:true});
-    console.log(orderData)
-
-    const options = {
-      key: import.meta.env.VITE_RAZORPAY_KEY_ID, // from .env
-      amount: orderData.data.amount,
-      currency: "INR",
-      name: "Virtual Courses",
-      description: "Course Enrollment Payment",
-      order_id: orderData.data.id,
-      handler: async function (response) {
-  console.log("Razorpay Response:", response);
-  try {
-    const verifyRes = await axios.post(serverUrl + "/api/payment/verify-payment",{
-  ...response,       
-  courseId,
-  userId
-}, { withCredentials: true });
-    
-setIsEnrolled(true)
-    toast.success(verifyRes.data.message);
-  } catch (verifyError) {
-    toast.error("Payment verification failed.");
-    console.error("Verification Error:", verifyError);
-  }
-  },
-    };
-    
-    const rzp = new window.Razorpay(options)
-    rzp.open()
-
-  } catch (err) {
-    toast.error("Something went wrong while enrolling.");
-    console.error("Enroll Error:", err);
-  }
-};
 
   return (
      <div className="min-h-screen bg-gray-50 p-6">
@@ -217,13 +161,9 @@ setIsEnrolled(true)
             </ul>
 
             {/* Enroll Button */}
-            {!isEnrolled ?<button className="bg-[black] text-white px-6 py-2 rounded hover:bg-gray-700 mt-3" onClick={()=>handleEnroll(courseId , userData._id)}>
-              Enroll Now
-            </button> :
             <button className="bg-green-200 text-green-600 px-6 py-2 rounded hover:bg-gray-100 hover:border mt-3" onClick={()=>navigate(`/viewlecture/${courseId}`)}>
              Watch Now
             </button>
-            }
           </div>
         </div>
 

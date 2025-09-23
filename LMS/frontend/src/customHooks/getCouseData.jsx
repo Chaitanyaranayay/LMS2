@@ -5,7 +5,7 @@ import { setCourseData } from '../redux/courseSlice.js';
 import { useEffect } from 'react';
 import React from 'react'
 
-const getCouseData = () => {
+const getCourseData = () => {
   const dispatch = useDispatch()
   const {userData} = useSelector((state)=>state.user)
 
@@ -25,6 +25,6 @@ const getCouseData = () => {
 
 }
 
-export default getCouseData
+export default getCourseData
 
 
