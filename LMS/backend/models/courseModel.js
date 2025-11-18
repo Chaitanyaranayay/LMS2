@@ -47,6 +47,10 @@ const courseSchema = new mongoose.Schema({
         }],
 },{timestamps:true})
 
+// Text index for title + description to support simple search queries
+courseSchema.index({ title: 'text', description: 'text' })
+courseSchema.index({ creator: 1 })
+
 const Course = mongoose.model("Course",courseSchema)
 
 export default Course

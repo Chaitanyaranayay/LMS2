@@ -19,13 +19,14 @@ import EditLecture from './pages/admin/EditLecture'
 
 import getCouseData from './customHooks/getCouseData'
 import ViewCourse from './pages/ViewCourse'
+import PaymentSuccess from './pages/PaymentSuccess'
 import ScrollToTop from './components/ScrollToTop'
 import getCreatorCourseData from './customHooks/getCreatorCourseData'
 import EnrolledCourse from './pages/EnrolledCourse'
 import ViewLecture from './pages/ViewLecture'
 import getAllReviews from './customHooks/getAllReviews'
 
-export const serverUrl = "http://localhost:8000"
+export const serverUrl = ""
 
 function App() {
   
@@ -58,7 +59,8 @@ function App() {
         <Route path='/createcourses' element={userData?.role === "educator"?<CreateCourse/>:<Navigate to={"/signup"}/>}/>
         <Route path='/createlecture/:courseId' element={userData?.role === "educator"?<CreateLecture/>:<Navigate to={"/signup"}/>}/>
         <Route path='/editlecture/:courseId/:lectureId' element={userData?.role === "educator"?<EditLecture/>:<Navigate to={"/signup"}/>}/>
-        <Route path='/forgotpassword' element={<ForgotPassword/>}/>
+  <Route path='/forgotpassword' element={<ForgotPassword/>}/>
+  <Route path='/payment-success' element={<PaymentSuccess/>}/>
          </Routes>
 
          </>

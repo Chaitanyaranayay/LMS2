@@ -29,5 +29,9 @@ const reviewSchema = new mongoose.Schema(
   { timestamps: true }
 )
 
+// Prevent duplicate reviews by same user on same course at DB level
+reviewSchema.index({ course: 1, user: 1 }, { unique: true })
+reviewSchema.index({ course: 1 })
+
 const Review = mongoose.model("Review", reviewSchema);
 export default Review;

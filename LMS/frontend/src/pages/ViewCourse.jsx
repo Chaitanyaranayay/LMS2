@@ -59,23 +59,73 @@ console.log("Average Rating:", avgRating);
 
   
 
-  const fetchCourseData = async () => {
-    courseData.map((item) => {
-      if (item._id === courseId) {
-      dispatch(setSelectedCourseData(item))
-        console.log(selectedCourseData)
-      
-
-        return null;
-      }
-
-    })
-
-  }
-
   useEffect(() => {
+    const fetchCourseData = async () => {
+      courseData.map((item) => {
+        if (item._id === courseId) {
+          dispatch(setSelectedCourseData(item))
+          // console.log(selectedCourseData)
+          return null;
+        }
+      })
+    }
     fetchCourseData()
-  }, [courseId,courseData,lectureData])
+  }, [courseId, courseData, lectureData, dispatch])
+
+  // Razorpay flow: create order on server, open checkout, verify on server
+  const handleBuy = async () => {
+    try {
+      // 1) create order on server
+      const createRes = await fetch('/api/payment/create-order', {
+        method: 'POST',
+        credentials: 'include',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ courseId })
+      })
+      if (!createRes.ok) {
+        const err = await createRes.json().catch(() => null)
+        return toast.error('Create order failed: ' + (err?.message || createRes.status))
+      }
+      const { key, order } = await createRes.json()
+
+      // 2) open Razorpay checkout
+      const options = {
+        key,
+        amount: order.amount,
+        currency: order.currency,
+        name: 'QuestEd',
+        description: selectedCourseData?.title || 'Course purchase',
+        order_id: order.id,
+        handler: async function (response) {
+          // 3) verify payment on server
+          const verifyRes = await fetch('/api/payment/verify', {
+            method: 'POST',
+            credentials: 'include',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(response)
+          })
+          if (verifyRes.ok) {
+            toast.success('Payment successful and verified')
+            navigate('/payment-success')
+          } else {
+            const err = await verifyRes.json().catch(() => null)
+            toast.error('Payment verification failed: ' + (err?.message || verifyRes.status))
+          }
+        },
+        prefill: { name: userData?.name || '', email: userData?.email || '' },
+        theme: { color: '#3399cc' }
+      }
+      const rzp = new window.Razorpay(options)
+      rzp.on('payment.failed', function (resp) {
+        console.error('payment.failed', resp)
+        toast.error('Payment failed: ' + (resp.error?.description || 'Unknown'))
+      })
+      rzp.open()
+    } catch (err) {
+      console.error('handleBuy error', err)
+      toast.error('Error starting payment')
+    }
+  }
 
 
     // Fetch creator info once course data is available
@@ -99,7 +149,7 @@ console.log("Average Rating:", avgRating);
     getCreator();
 
     
-  }, [selectedCourseData]);
+  }, [selectedCourseData, courseId]);
 
 
    
@@ -114,7 +164,7 @@ console.log("Average Rating:", avgRating);
     setSelectedCreatorCourse(creatorCourses);
   
   }
-}, [creatorData, courseData]);
+}, [creatorData, courseData, courseId]);
 
   return (
      <div className="min-h-screen bg-gray-50 p-6">
@@ -161,9 +211,14 @@ console.log("Average Rating:", avgRating);
             </ul>
 
             {/* Enroll Button */}
-            <button className="bg-green-200 text-green-600 px-6 py-2 rounded hover:bg-gray-100 hover:border mt-3" onClick={()=>navigate(`/viewlecture/${courseId}`)}>
-             Watch Now
-            </button>
+            <div className="flex gap-3">
+              <button className="bg-green-200 text-green-600 px-6 py-2 rounded hover:bg-gray-100 hover:border mt-3" onClick={()=>navigate(`/viewlecture/${courseId}`)}>
+               Watch Now
+              </button>
+              <button className="bg-blue-600 text-white px-6 py-2 rounded hover:bg-blue-700 mt-3" onClick={handleBuy}>
+                Buy this course
+              </button>
+            </div>
           </div>
         </div>
 

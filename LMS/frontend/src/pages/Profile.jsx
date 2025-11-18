@@ -1,11 +1,38 @@
-import React from 'react'
-import { useSelector } from 'react-redux'
+import React, { useEffect } from 'react'
+import { useSelector, useDispatch } from 'react-redux'
 import { useNavigate } from 'react-router-dom'
 import { FaArrowLeftLong } from "react-icons/fa6";
+import axios from 'axios'
+import { serverUrl } from '../App'
+import { toast } from 'react-toastify'
+import { setUserData } from '../redux/userSlice'
 
 function Profile() {
   let {userData} = useSelector(state=>state.user)
+  let dispatch = useDispatch()
   let navigate = useNavigate()
+  useEffect(()=>{
+    // render Google link button only if user isn't linked already
+    if (userData && !userData.isGoogle && window.google && document.getElementById('google-link')){
+      window.google.accounts.id.initialize({
+        client_id: import.meta.env.VITE_GOOGLE_CLIENT_ID,
+        callback: async (resp)=>{
+          try{
+            const id_token = resp.credential
+            await axios.post(serverUrl + "/api/auth/google/link", { id_token }, { withCredentials: true })
+            // refresh current user
+            const r = await axios.get(serverUrl + "/api/user/currentuser", { withCredentials: true })
+            dispatch(setUserData(r.data))
+            toast.success('Google account linked')
+          }catch(err){
+            console.error(err)
+            toast.error(err?.response?.data?.message || 'Linking failed')
+          }
+        }
+      })
+      window.google.accounts.id.renderButton(document.getElementById('google-link'), { theme: 'outline', size: 'large' })
+    }
+  }, [userData, dispatch])
   return (
     <div className="min-h-screen bg-gray-100 px-4 py-10 flex items-center justify-center ">
       

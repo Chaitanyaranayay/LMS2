@@ -10,6 +10,7 @@ import { toast } from 'react-toastify'
 import { ClipLoader } from 'react-spinners'
 import { useDispatch } from 'react-redux'
 import { setUserData } from '../redux/userSlice'
+import { useEffect } from 'react'
 
 function Login() {
     const [email,setEmail]= useState("")
@@ -18,6 +19,30 @@ function Login() {
     let [show,setShow] = useState(false)
      const [loading,setLoading]= useState(false)
      let dispatch = useDispatch()
+    useEffect(()=>{
+        // render Google button if available
+        if(window.google && document.getElementById('google-signin')){
+            window.google.accounts.id.initialize({
+                client_id: import.meta.env.VITE_GOOGLE_CLIENT_ID,
+                callback: async (resp)=>{
+                    try {
+                        const id_token = resp.credential
+                        const result = await axios.post(serverUrl + "/api/auth/google", { id_token }, { withCredentials: true })
+                        dispatch(setUserData(result.data))
+                        navigate("/")
+                        toast.success("Login Successful")
+                    } catch (error) {
+                        console.error(error)
+                        toast.error(error?.response?.data?.message || 'Google login failed')
+                    }
+                }
+            })
+            window.google.accounts.id.renderButton(
+                document.getElementById('google-signin'),
+                { theme: 'outline', size: 'large' }
+            )
+        }
+    }, [dispatch, navigate])
     const handleLogin = async () => {
         setLoading(true)
         try {
@@ -56,6 +81,7 @@ function Login() {
                     </div>
                      
                     <button className='w-[80%] h-[40px] bg-black text-white cursor-pointer flex items-center justify-center rounded-[5px]' disabled={loading} onClick={handleLogin}>{loading?<ClipLoader size={30} color='white' /> : "Login"}</button>
+                    <div id='google-signin' className='mt-2'></div>
                     <span className='text-[13px] cursor-pointer text-[#585757]' onClick={()=>navigate("/forgotpassword")}>Forget your password?</span>
     
                      <div className='text-[#6f6f6f]'>Don't have an account? <span className='underline underline-offset-1 text-[black]' onClick={()=>navigate("/signup")}>Sign up</span></div>

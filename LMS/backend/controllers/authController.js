@@ -3,6 +3,7 @@ import validator from "validator"
 
 import bcrypt from "bcryptjs"
 import User from "../models/userModel.js"
+import { OAuth2Client } from 'google-auth-library'
 
 import sendMail from "../configs/Mail.js"
 
@@ -32,12 +33,14 @@ export const signUp=async (req,res)=>{
            
             })
         let token = await genToken(user._id)
-        res.cookie("token",token,{
-            httpOnly:true,
-            secure:false,
-            sameSite: "Strict",
+        // Cookie settings: use secure cookies in production and adjust sameSite
+        const cookieOptions = {
+            httpOnly: true,
+            secure: process.env.NODE_ENV === 'production',
+            sameSite: process.env.NODE_ENV === 'production' ? 'None' : 'Strict',
             maxAge: 7 * 24 * 60 * 60 * 1000
-        })
+        }
+        res.cookie("token", token, cookieOptions)
         return res.status(201).json(user)
 
     } catch (error) {
@@ -57,13 +60,14 @@ export const login=async(req,res)=>{
         if(!isMatch){
             return res.status(400).json({message:"incorrect Password"})
         }
-        let token =await genToken(user._id)
-        res.cookie("token",token,{
-            httpOnly:true,
-            secure:false,
-            sameSite: "Strict",
+        let token = await genToken(user._id)
+        const cookieOptions = {
+            httpOnly: true,
+            secure: process.env.NODE_ENV === 'production',
+            sameSite: process.env.NODE_ENV === 'production' ? 'None' : 'Strict',
             maxAge: 7 * 24 * 60 * 60 * 1000
-        })
+        }
+        res.cookie("token", token, cookieOptions)
         return res.status(200).json(user)
 
     } catch (error) {
@@ -77,8 +81,9 @@ export const login=async(req,res)=>{
 
 export const logOut = async(req,res)=>{
     try {
-        await res.clearCookie("token")
-        return res.status(200).json({message:"logOut Successfully"})
+    // Clear cookie; ensure flags match how cookie was set
+    res.clearCookie("token", { httpOnly: true, secure: process.env.NODE_ENV === 'production', sameSite: process.env.NODE_ENV === 'production' ? 'None' : 'Strict' })
+    return res.status(200).json({message:"logOut Successfully"})
     } catch (error) {
         return res.status(500).json({message:`logout Error ${error}`})
     }
@@ -143,5 +148,90 @@ export const resetPassword = async (req,res) => {
         return res.status(200).json({message:"Password Reset Successfully"})
     } catch (error) {
         return res.status(500).json({message:`Reset Password error ${error}`})
+    }
+}
+
+// Google Sign-In using Google ID token
+export const googleAuth = async (req, res) => {
+    try {
+        const { id_token } = req.body
+        if (!id_token) return res.status(400).json({ message: "id_token missing" })
+
+        const client = new OAuth2Client(process.env.GOOGLE_CLIENT_ID)
+        const ticket = await client.verifyIdToken({ idToken: id_token, audience: process.env.GOOGLE_CLIENT_ID })
+        const payload = ticket.getPayload()
+        const { email, name, picture, sub } = payload || {}
+        if (!email) return res.status(400).json({ message: "Google account has no email" })
+
+        let user = await User.findOne({ email })
+        if (!user) {
+            // create a Google user
+            const hashPassword = await bcrypt.hash(Date.now().toString(), 10)
+            user = await User.create({ name, email, password: hashPassword, isGoogle: true, googleId: sub, photoUrl: picture })
+        } else {
+            // update existing user with google info if not set
+            let changed = false
+            if (!user.isGoogle) { user.isGoogle = true; changed = true }
+            if (!user.googleId && sub) { user.googleId = sub; changed = true }
+            if (!user.photoUrl && picture) { user.photoUrl = picture; changed = true }
+            if (changed) await user.save()
+        }
+
+        const token = await genToken(user._id)
+        const cookieOptions = {
+            httpOnly: true,
+            secure: process.env.NODE_ENV === 'production',
+            sameSite: process.env.NODE_ENV === 'production' ? 'None' : 'Strict',
+            maxAge: 7 * 24 * 60 * 60 * 1000
+        }
+        res.cookie("token", token, cookieOptions)
+        return res.status(200).json(user)
+
+    } catch (error) {
+        console.log("googleAuth error", error)
+        return res.status(500).json({ message: `Google auth error ${error}` })
+    }
+}
+
+// Link a Google account to the currently authenticated user
+export const linkGoogle = async (req, res) => {
+    try {
+        const { id_token } = req.body
+        if (!id_token) return res.status(400).json({ message: "id_token missing" })
+
+        const client = new OAuth2Client(process.env.GOOGLE_CLIENT_ID)
+        const ticket = await client.verifyIdToken({ idToken: id_token, audience: process.env.GOOGLE_CLIENT_ID })
+        const payload = ticket.getPayload()
+        const { email, sub, picture } = payload || {}
+        if (!email) return res.status(400).json({ message: "Google account has no email" })
+
+        // confirm current user
+        const currentUserId = req.userId
+        if (!currentUserId) return res.status(401).json({ message: "Not authenticated" })
+
+        const user = await User.findById(currentUserId)
+        if (!user) return res.status(404).json({ message: "User not found" })
+
+        // If google email does not match user's email, reject linking for safety
+        if (user.email !== email) {
+            return res.status(400).json({ message: "Google email does not match your account email. Please use the same Google account or update your account email first." })
+        }
+
+        // ensure no other user has this googleId/email
+        const other = await User.findOne({ googleId: sub })
+        if (other && other._id.toString() !== user._id.toString()) {
+            return res.status(400).json({ message: "This Google account is already linked with another user." })
+        }
+
+        user.isGoogle = true
+        user.googleId = sub
+        if (picture) user.photoUrl = user.photoUrl || picture
+        await user.save()
+
+        // return updated user
+        return res.status(200).json(user)
+    } catch (error) {
+        console.log("linkGoogle error", error)
+        return res.status(500).json({ message: `link Google error ${error}` })
     }
 }

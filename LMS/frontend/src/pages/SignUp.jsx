@@ -10,6 +10,7 @@ import { ClipLoader } from 'react-spinners'
 import { toast } from 'react-toastify'
 import { useDispatch } from 'react-redux'
 import { setUserData } from '../redux/userSlice'
+import { useEffect } from 'react'
 
 function SignUp() {
     const [name,setName]= useState("")
@@ -20,6 +21,30 @@ function SignUp() {
     let [show,setShow] = useState(false)
     const [loading,setLoading]= useState(false)
     let dispatch = useDispatch()
+
+    useEffect(()=>{
+        if(window.google && document.getElementById('google-signin')){
+            window.google.accounts.id.initialize({
+                client_id: import.meta.env.VITE_GOOGLE_CLIENT_ID,
+                callback: async (resp)=>{
+                    try {
+                        const id_token = resp.credential
+                        const result = await axios.post(serverUrl + "/api/auth/google", { id_token }, { withCredentials: true })
+                        dispatch(setUserData(result.data))
+                        navigate("/")
+                        toast.success("Login Successful")
+                    } catch (error) {
+                        console.error(error)
+                        toast.error(error?.response?.data?.message || 'Google login failed')
+                    }
+                }
+            })
+            window.google.accounts.id.renderButton(
+                document.getElementById('google-signin'),
+                { theme: 'outline', size: 'large' }
+            )
+        }
+    }, [dispatch, navigate])
 
     const handleSignUp = async () => {
         setLoading(true)
