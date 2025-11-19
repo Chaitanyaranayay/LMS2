@@ -26,7 +26,7 @@ export const createRazorpayOrder = async (req, res) => {
       payment_capture: 1, // auto-capture
     }
 
-    const rpOrder = await razorpay.orders.create(options)
+  const rpOrder = await razorpay.orders.create(options)
 
     const order = await Order.create({
       course: course._id,
@@ -37,10 +37,72 @@ export const createRazorpayOrder = async (req, res) => {
       isPaid: false,
     })
 
-    return res.status(201).json({ key: process.env.RAZORPAY_KEY_ID, order: rpOrder, localOrderId: order._id })
+    const mode = process.env.RAZORPAY_MODE || (String(process.env.RAZORPAY_KEY_ID || "").startsWith("rzp_test_") ? "test" : "live")
+    return res.status(201).json({ key: process.env.RAZORPAY_KEY_ID, order: rpOrder, localOrderId: order._id, mode })
   } catch (err) {
     console.error("createRazorpayOrder error:", err)
     return res.status(500).json({ message: "Server error" })
+  }
+}
+
+// webhook handler for Razorpay (recommended for production)
+export const handleRazorpayWebhook = async (req, res) => {
+  try {
+    const webhookSecret = process.env.RAZORPAY_WEBHOOK_SECRET
+    const signature = req.headers['x-razorpay-signature']
+
+    if (!webhookSecret) {
+      console.warn('Razorpay webhook received but RAZORPAY_WEBHOOK_SECRET is not configured')
+      return res.status(501).json({ message: 'Webhook not configured on server' })
+    }
+
+    // `req.body` is a Buffer because the route should use express.raw middleware
+    const rawBody = req.body
+    const expected = crypto.createHmac('sha256', webhookSecret).update(rawBody).digest('hex')
+
+    if (expected !== signature) {
+      console.warn('Invalid Razorpay webhook signature', { expected, signature })
+      return res.status(400).json({ message: 'Invalid signature' })
+    }
+
+    const payload = JSON.parse(rawBody.toString())
+    // handle important events (payment.captured, payment.authorized, order.paid etc.)
+    const event = payload.event
+    console.log('Razorpay webhook event:', event)
+
+    if (event === 'payment.captured' || event === 'payment.authorized') {
+      const paymentEntity = payload.payload?.payment?.entity
+      const razorpay_order_id = paymentEntity?.order_id
+      const razorpay_payment_id = paymentEntity?.id
+
+      if (razorpay_order_id && razorpay_payment_id) {
+        const order = await Order.findOne({ razorpay_order_id })
+        if (order && !order.isPaid) {
+          order.razorpay_payment_id = razorpay_payment_id
+          order.isPaid = true
+          order.paidAt = new Date()
+          await order.save()
+
+          // enroll user (idempotent)
+          const courseId = order.course
+          const userId = order.student
+          if (courseId && userId) {
+            try {
+              await Course.updateOne({ _id: courseId }, { $addToSet: { enrolledStudents: userId } }).exec()
+              await User.updateOne({ _id: userId }, { $addToSet: { enrolledCourses: courseId } }).exec()
+            } catch (updateErr) {
+              console.error('webhook enrollment update error:', updateErr)
+            }
+          }
+        }
+      }
+    }
+
+    // acknowledge receipt
+    return res.status(200).json({ status: 'ok' })
+  } catch (err) {
+    console.error('handleRazorpayWebhook error:', err)
+    return res.status(500).json({ message: 'Server error' })
   }
 }
 

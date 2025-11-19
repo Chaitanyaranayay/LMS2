@@ -3,6 +3,8 @@ import dotenv from "dotenv"
 import connectDb from "./configs/db.js"
 import authRouter from "./routes/authRoute.js"
 import cookieParser from "cookie-parser"
+import fs from 'fs'
+import https from 'https'
 import cors from "cors"
 import userRouter from "./routes/userRoute.js"
 import courseRouter from "./routes/courseRoute.js"
@@ -10,11 +12,17 @@ import reviewRouter from "./routes/reviewRoute.js"
 import paymentRouter from "./routes/paymentRoute.js"
 import helmet from "helmet"
 import rateLimit from "express-rate-limit"
+import bodyParser from 'body-parser'
 
 dotenv.config()
 
 const port = process.env.PORT || 4000
 const app = express()
+
+// IMPORTANT: Razorpay webhooks require the raw request body to compute signature.
+// We register a route-level raw parser for the webhook path BEFORE the JSON parser
+// so that `/api/payment/webhook` receives the raw Buffer in `req.body`.
+app.use('/api/payment/webhook', bodyParser.raw({ type: '*/*' }))
 
 // Security: trust reverse proxy when in production so secure cookies work behind proxies/load balancers
 if (process.env.NODE_ENV === 'production') {
@@ -52,7 +60,29 @@ app.get("/", (req, res) => {
     res.send("Hello From Server")
 })
 
-app.listen(port, () => {
-    console.log("Server Started on port", port)
-    connectDb()
-})
+// Start server: prefer HTTPS when cert files are provided via env
+const startServer = async () => {
+    try {
+        await connectDb()
+
+        const sslKeyPath = process.env.SSL_KEY_PATH
+        const sslCertPath = process.env.SSL_CERT_PATH
+
+        if (sslKeyPath && sslCertPath && fs.existsSync(sslKeyPath) && fs.existsSync(sslCertPath)) {
+            const key = fs.readFileSync(sslKeyPath)
+            const cert = fs.readFileSync(sslCertPath)
+            https.createServer({ key, cert }, app).listen(port, () => {
+                console.log(`HTTPS Server started on port ${port}`)
+            })
+        } else {
+            app.listen(port, () => {
+                console.log("HTTP Server Started on port", port)
+            })
+        }
+    } catch (err) {
+        console.error('Failed to start server:', err)
+        process.exit(1)
+    }
+}
+
+startServer()
