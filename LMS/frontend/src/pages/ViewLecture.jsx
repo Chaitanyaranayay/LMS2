@@ -1,21 +1,106 @@
-import React, { useState } from 'react';
-import { useSelector } from 'react-redux';
+import React, { useState, useEffect } from 'react';
+import { useSelector, useDispatch } from 'react-redux';
 import { useNavigate, useParams } from 'react-router-dom';
 import { FaPlayCircle } from 'react-icons/fa';
 import { FaArrowLeftLong } from "react-icons/fa6";
+import { setUserData } from '../redux/userSlice';
 
 function ViewLecture() {
   const { courseId } = useParams();
+  const dispatch = useDispatch()
   const { courseData } = useSelector((state) => state.course);
   const {userData} = useSelector((state) => state.user)
-  const selectedCourse = courseData?.find((course) => course._id === courseId);
+  const [selectedCourse, setSelectedCourse] = useState(null);
+  const [loading, setLoading] = useState(true);
 
-  const [selectedLecture, setSelectedLecture] = useState(
-    selectedCourse?.lectures?.[0] || null
-  );
+  // Fetch course with populated lectures to get video URLs
+  useEffect(() => {
+    const fetchCourseWithLectures = async () => {
+      try {
+        const res = await fetch(`/api/course/getcourse/${courseId}`, {
+          credentials: 'include'
+        });
+        if (res.ok) {
+          const data = await res.json();
+          setSelectedCourse(data);
+        } else {
+          console.error('Failed to load course');
+        }
+      } catch (err) {
+        console.error('Error fetching course:', err);
+      } finally {
+        setLoading(false);
+      }
+    };
+    fetchCourseWithLectures();
+  }, [courseId]);
+
+  const [selectedLecture, setSelectedLecture] = useState(null);
   const navigate = useNavigate()
-  const courseCreator = userData?._id === selectedCourse?.creator ? userData : null;
+  const courseCreator = userData?._id === selectedCourse?.creator?._id ? selectedCourse.creator : null;
 
+  const enrollment = userData?.enrolledCourses?.find(ec => {
+    const cid = ec.course?._id || ec.course || ec
+    return cid?.toString?.() === courseId
+  })
+  const completedLectureIds = enrollment?.completedLectures?.map(l => l?._id || l) || []
+  const isLectureCompleted = selectedLecture ? completedLectureIds.includes(selectedLecture._id) : false
+
+  // Set initial lecture once course loads
+  useEffect(() => {
+    if (selectedCourse?.lectures?.length) {
+      setSelectedLecture(selectedCourse.lectures[0]);
+    }
+  }, [selectedCourse]);
+
+  const handleMarkComplete = async (lecture) => {
+    if (!lecture) return
+    try {
+      const res = await fetch(`/api/course/${courseId}/lecture/${lecture._id}/complete`, {
+        method: 'POST',
+        credentials: 'include'
+      })
+      if (res.ok) {
+        const data = await res.json()
+
+        // Update userData in store with new progress and completed lectures
+        if (userData) {
+          const updatedEnrollments = userData.enrolledCourses.map(ec => {
+            const cid = ec.course?._id || ec.course || ec
+            if (cid?.toString?.() === courseId) {
+              return {
+                ...ec,
+                progress: data.progress,
+                completedLectures: data.completedLectures
+              }
+            }
+            return ec
+          })
+          dispatch(setUserData({ ...userData, enrolledCourses: updatedEnrollments }))
+        }
+      } else {
+        console.error('Failed to mark complete')
+      }
+    } catch (err) {
+      console.error('Error marking complete', err)
+    }
+  }
+
+  if (loading) {
+    return (
+      <div className="min-h-screen bg-gray-50 p-6 flex items-center justify-center">
+        <div className="text-xl font-semibold text-gray-600">Loading course...</div>
+      </div>
+    );
+  }
+
+  if (!selectedCourse) {
+    return (
+      <div className="min-h-screen bg-gray-50 p-6 flex items-center justify-center">
+        <div className="text-xl font-semibold text-red-600">Course not found</div>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen bg-gray-50 p-6 flex flex-col md:flex-row gap-6">
@@ -41,6 +126,7 @@ function ViewLecture() {
               controls
               className="w-full h-full object-cover"
               crossOrigin="anonymous"
+              onEnded={() => handleMarkComplete(selectedLecture)}
             />
           ) : (
             <div className="flex items-center justify-center h-full text-white">
@@ -52,7 +138,15 @@ function ViewLecture() {
         {/* Selected Lecture Info */}
         <div className="mt-2">
           <h2 className="text-lg font-semibold text-gray-800">{selectedLecture?.lectureTitle}</h2>
-          
+          <div className="mt-3 flex gap-3 items-center">
+            <button
+              className={`px-4 py-2 rounded-md text-sm font-semibold border ${isLectureCompleted ? 'bg-green-100 text-green-700 border-green-300' : 'bg-black text-white border-black'}`}
+              onClick={() => handleMarkComplete(selectedLecture)}
+              disabled={!selectedLecture}
+            >
+              {isLectureCompleted ? 'Completed' : 'Mark as completed'}
+            </button>
+          </div>
         </div>
       </div>
 

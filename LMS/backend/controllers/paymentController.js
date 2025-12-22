@@ -73,10 +73,19 @@ const enrollUserInCourse = async (courseId, userId) => {
       { $addToSet: { enrolledStudents: userId } }
     )
     
-    // Add course to user's enrolled list
+    // Add course to user's enrolled list with progress tracking
     await User.updateOne(
       { _id: userId }, 
-      { $addToSet: { enrolledCourses: courseId } }
+      { 
+        $addToSet: { 
+          enrolledCourses: {
+            course: courseId,
+            enrolledAt: new Date(),
+            completedLectures: [],
+            progress: 0
+          }
+        } 
+      }
     )
   } catch (err) {
     console.error("Enrollment error:", err)
@@ -118,7 +127,9 @@ export const verifyPayment = async (req, res) => {
     // Enroll user in the course
     await enrollUserInCourse(order.course, order.student)
 
-    return res.status(200).json({ message: "Payment verified! Course enrolled successfully" })
+    return res.status(200).json({ 
+      message: "Payment verified! Course enrolled successfully"
+    })
   } catch (err) {
     console.error("Payment verification error:", err)
     return res.status(500).json({ message: "Server error" })

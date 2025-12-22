@@ -27,6 +27,8 @@ import EnrolledCourse from './pages/EnrolledCourse'
 import ViewLecture from './pages/ViewLecture'
 import getAllReviews from './customHooks/getAllReviews'
 import AISearch from './pages/AISearch'
+import IntelligentSearch from './pages/IntelligentSearch'
+import Recommendations from './pages/Recommendations'
 
 export const serverUrl = ""
 
@@ -51,8 +53,10 @@ function App() {
         <Route path='/allcourses' element={userData?<AllCouses/>:<Navigate to={"/signup"}/>}/>
         <Route path='/viewcourse/:courseId' element={userData?<ViewCourse/>:<Navigate to={"/signup"}/>}/>
         <Route path='/ai-search' element={userData?<AISearch/>:<Navigate to={"/signup"}/>}/>
+        <Route path='/intelligent-search' element={userData?<IntelligentSearch/>:<Navigate to={"/signup"}/>}/>
+        <Route path='/recommendations' element={userData?<Recommendations/>:<Navigate to={"/signup"}/>}/>
         <Route path='/editprofile' element={userData?<EditProfile/>:<Navigate to={"/signup"}/>}/>
-        <Route path='/enrolledcourses' element={userData?<EnrolledCourse/>:<Navigate to={"/signup"}/>}/>
+        <Route path='/enrolledcourses' element={userData?.role === "student"?<EnrolledCourse/>:<Navigate to={"/signup"}/>}/>
          <Route path='/viewlecture/:courseId' element={userData?<ViewLecture/>:<Navigate to={"/signup"}/>}/>
         
         

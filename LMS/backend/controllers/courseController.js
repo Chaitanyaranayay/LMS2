@@ -61,19 +61,32 @@ export const editCourse = async (req,res) => {
     try {
         const {courseId} = req.params;
         const {title , subTitle , description , category , level , price , isPublished } = req.body;
-        let thumbnail
-         if(req.file){
-            thumbnail =await uploadOnCloudinary(req.file.path)
-                }
+        
         let course = await Course.findById(courseId)
         if(!course){
             return res.status(404).json({message:"Course not found"})
         }
-        const updateData = {title , subTitle , description , category , level , price , isPublished ,thumbnail}
+        
+        const updateData = {}
+        if(title) updateData.title = title
+        if(subTitle) updateData.subTitle = subTitle
+        if(description) updateData.description = description
+        if(category) updateData.category = category
+        if(level) updateData.level = level
+        if(price) updateData.price = price
+        if(isPublished !== undefined) updateData.isPublished = isPublished === "true" || isPublished === true
+        
+        if(req.file){
+            // Use local file path instead of Cloudinary for now
+            // You can update this later to use Cloudinary if needed
+          const fileUrl = `${req.protocol}://${req.get('host')}/public/${req.file.filename}`
+          updateData.thumbnail = fileUrl
+        }
 
         course = await Course.findByIdAndUpdate(courseId , updateData , {new:true})
         return res.status(201).json(course)
     } catch (error) {
+        console.error("Edit course error:", error)
         return res.status(500).json({message:`Failed to update course ${error}`})
     }
 }
@@ -86,6 +99,7 @@ export const getCourseById = async (req,res) => {
         let course = await Course.findById(courseId)
             .populate('enrolledStudents', 'name email photoUrl')
             .populate('creator', 'name photoUrl')
+            .populate('lectures') // Populate lectures to get video URLs
         
         if(!course){
             return res.status(404).json({message:"Course not found"})
@@ -226,6 +240,113 @@ export const getCreatorById = async (req, res) => {
     res.status(500).json({ message: "get Creator error" });
   }
 };
+
+
+// Get course with enrolled students and their progress
+export const getCourseWithProgress = async (req, res) => {
+  try {
+    const { courseId } = req.params;
+    const userId = req.userId;
+
+    // Find course and verify creator
+    const course = await Course.findById(courseId).populate('lectures');
+    if (!course) {
+      return res.status(404).json({ message: "Course not found" });
+    }
+
+    // Check if user is the course creator
+    if (course.creator.toString() !== userId) {
+      return res.status(403).json({ message: "Not authorized to view this data" });
+    }
+
+    // Get all enrolled students with their progress
+    const enrolledUsers = await User.find({
+      'enrolledCourses.course': courseId
+    }).select('name email photoUrl enrolledCourses');
+
+    // Map students with their progress for this specific course
+    const studentsWithProgress = enrolledUsers.map(user => {
+      const enrollment = user.enrolledCourses.find(
+        ec => ec.course.toString() === courseId
+      );
+      
+      const totalLectures = course.lectures.length;
+      const completedCount = enrollment?.completedLectures?.length || 0;
+      const progressPercent = totalLectures > 0 ? Math.round((completedCount / totalLectures) * 100) : 0;
+
+      return {
+        _id: user._id,
+        name: user.name,
+        email: user.email,
+        photoUrl: user.photoUrl,
+        enrolledAt: enrollment?.enrolledAt || null,
+        completedLectures: completedCount,
+        totalLectures: totalLectures,
+        progress: progressPercent
+      };
+    });
+
+    return res.status(200).json({
+      course: {
+        _id: course._id,
+        title: course.title,
+        price: course.price,
+        totalLectures: course.lectures.length
+      },
+      students: studentsWithProgress
+    });
+
+  } catch (error) {
+    console.error("Error fetching course progress:", error);
+    return res.status(500).json({ message: "Failed to get course progress" });
+  }
+};
+
+// Mark a lecture as completed for the logged-in user and update progress
+export const markLectureCompleted = async (req, res) => {
+  try {
+    const { courseId, lectureId } = req.params
+    const userId = req.userId
+
+    const course = await Course.findById(courseId).populate('lectures', '_id')
+    if (!course) return res.status(404).json({ message: "Course not found" })
+
+    const user = await User.findById(userId)
+    if (!user) return res.status(404).json({ message: "User not found" })
+
+    const enrollment = user.enrolledCourses.find(ec =>
+      (ec.course?._id?.toString?.() || ec.course?.toString?.() || ec.toString?.()) === courseId
+    )
+
+    if (!enrollment) return res.status(403).json({ message: "You are not enrolled in this course" })
+
+    const lectureAlready = enrollment.completedLectures.some(lid =>
+      (lid?._id?.toString?.() || lid?.toString?.()) === lectureId
+    )
+
+    if (!lectureAlready) {
+      enrollment.completedLectures.push(lectureId)
+    }
+
+    const totalLectures = course.lectures.length || 0
+    const completedCount = enrollment.completedLectures.length
+    const progressPercent = totalLectures > 0 ? Math.round((completedCount / totalLectures) * 100) : 0
+    enrollment.progress = progressPercent
+
+    await user.save()
+
+    return res.status(200).json({
+      message: "Lecture marked as completed",
+      progress: progressPercent,
+      completedLectures: enrollment.completedLectures
+    })
+  } catch (error) {
+    console.error("Error marking lecture complete:", error)
+    return res.status(500).json({ message: "Failed to update progress" })
+  }
+}
+
+
 
 
 

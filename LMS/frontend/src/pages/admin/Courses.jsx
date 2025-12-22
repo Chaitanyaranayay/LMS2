@@ -66,18 +66,23 @@ function Courses() {
               </tr>
             </thead>
             <tbody>
-              {creatorCourseData?.map((course, index) => (
+              {creatorCourseData?.map((course, index) => {
+                const thumb = course?.thumbnail
+                  ? (course.thumbnail.startsWith('http') ? course.thumbnail : `${serverUrl}${course.thumbnail}`)
+                  : img1
+                return (
 
                 <tr key={index}
 
                   className="border-b hover:bg-gray-50 transition duration-200"
                 >
                   <td className="py-3 px-4 flex items-center gap-4">
-                    {course?.thumbnail ? <img
-                      src={course?.thumbnail}
+                    <img
+                      src={thumb}
                       alt=""
                       className="w-25 h-14 object-cover rounded-md"
-                    /> : <img src={img1} alt='' className="w-14 h-14 object-cover rounded-md object-fit" />}
+                      onError={(e)=>{e.currentTarget.src=img1}}
+                    />
                     <span>{course?.title}</span>
                   </td>
                   {course?.price ? <td className="py-3 px-4">₹{course?.price}</td> : <td className="py-3 px-4">₹ NA</td>}
@@ -90,7 +95,7 @@ function Courses() {
                     <FaEdit className="text-gray-600 hover:text-blue-600 cursor-pointer" onClick={() => navigate(`/addcourses/${course?._id}`)} />
                   </td>
                 </tr>
-              ))
+              )})
               }
             </tbody>
           </table>
@@ -101,21 +106,22 @@ function Courses() {
 
 
         <div className="md:hidden space-y-4">
-          {creatorCourseData?.map((course, index) => (
+          {creatorCourseData?.map((course, index) => {
+            const thumb = course?.thumbnail
+              ? (course.thumbnail.startsWith('http') ? course.thumbnail : `${serverUrl}${course.thumbnail}`)
+              : img1
+            return (
             <div key={index}
 
               className="bg-white rounded-lg shadow p-4 flex flex-col gap-3 "
             >
               <div className="flex gap-4 items-center">
-                {course?.thumbnail ? <img
-                  src={course?.thumbnail}
+                <img
+                  src={thumb}
                   alt=""
                   className="w-16 h-16 rounded-md object-cover"
-                /> : <img
-                  src={img1}
-                  alt=""
-                  className="w-16 h-16 rounded-md object-cover"
-                />}
+                  onError={(e)=>{e.currentTarget.src=img1}}
+                />
                 <div className="flex-1">
                   <h2 className="font-medium text-sm">{course?.title}</h2>
                   {course?.price ? <p className="text-gray-600 text-xs mt-1">₹{course?.price}</p> : <p className="text-gray-600 text-xs mt-1">₹ NA</p>}
@@ -126,7 +132,7 @@ function Courses() {
                 {course?.isPublished ? "Published" : "Draft"}
               </span>
             </div>
-          ))}
+          )})}
           <p className="text-center text-sm text-gray-400 mt-4 pl-[80px]">
             A list of your recent courses.
           </p>

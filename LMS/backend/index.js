@@ -9,6 +9,7 @@ import courseRouter from "./routes/courseRoute.js"
 import reviewRouter from "./routes/reviewRoute.js"
 import paymentRouter from "./routes/paymentRoute.js"
 import aiRouter from "./routes/aiRoute.js"
+import externalCourseRouter from "./routes/externalCourseRoute.js"
 import helmet from "helmet"
 import rateLimit from "express-rate-limit"
 import bodyParser from 'body-parser'
@@ -35,6 +36,9 @@ app.use(cookieParser())
 // Helmet sets secure HTTP headers
 app.use(helmet())
 
+// Serve uploaded thumbnails/videos from /public
+app.use("/public", express.static("public"))
+
 // Rate limiter: basic protection against brute-force & DOS-ish requests
 const limiter = rateLimit({
     windowMs: 15 * 60 * 1000, // 15 minutes
@@ -55,6 +59,7 @@ app.use("/api/course", courseRouter)
 app.use("/api/review", reviewRouter)
 app.use("/api/payment", paymentRouter)
 app.use("/api/ai", aiRouter)
+app.use("/api/external", externalCourseRouter)
 
 app.get("/", (req, res) => {
     res.send("Hello From Server")

@@ -41,6 +41,10 @@ const orderSchema = new mongoose.Schema(
       type: String,
       enum: ["upi", "card", "netbanking", "wallet", "all"],
       default: "all"
+    },
+    enrollmentDate: {
+      type: Date,
+      default: Date.now
     }
   },
   { timestamps: true }

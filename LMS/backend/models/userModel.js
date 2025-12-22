@@ -36,8 +36,22 @@ const userSchema = new mongoose.Schema(
       sparse: true
     },
     enrolledCourses: [{
-      type: mongoose.Schema.Types.ObjectId,
-      ref: 'Course'
+      course: {
+        type: mongoose.Schema.Types.ObjectId,
+        ref: 'Course'
+      },
+      enrolledAt: {
+        type: Date,
+        default: Date.now
+      },
+      completedLectures: [{
+        type: mongoose.Schema.Types.ObjectId,
+        ref: 'Lecture'
+      }],
+      progress: {
+        type: Number,
+        default: 0
+      }
     }],
     resetOtp:{
       type:String

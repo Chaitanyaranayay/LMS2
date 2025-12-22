@@ -63,12 +63,19 @@ function Profile() {
             <span>{userData.description}</span>
           </div>
 
-          
+          {userData.role === "student" && (
+            <div className="text-sm">
+              <span className="font-semibold text-gray-700">Enrolled Courses: </span>
+              <span>{userData.enrolledCourses?.length || 0}</span>
+            </div>
+          )}
 
-          <div className="text-sm">
-            <span className="font-semibold text-gray-700">Enrolled Courses: </span>
-            <span>{userData.enrolledCourses.length}</span>
-          </div>
+          {userData.role === "educator" && (
+            <div className="text-sm">
+              <span className="font-semibold text-gray-700">Role: </span>
+              <span>Course Creator & Educator</span>
+            </div>
+          )}
         </div>
 
         {/* Actions */}

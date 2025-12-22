@@ -8,7 +8,7 @@ import axios from 'axios';
 import { toast } from 'react-toastify';
 import { useDispatch, useSelector } from 'react-redux';
 import { ClipLoader } from 'react-spinners';
-import { setCourseData } from '../../redux/courseSlice';
+import { setCourseData, setCreatorCourseData } from '../../redux/courseSlice';
 function AddCourses() {
     const navigate= useNavigate()
     const {courseId} = useParams()
@@ -27,7 +27,7 @@ function AddCourses() {
    const [backendImage,setBackendImage] = useState(null)
    let [loading,setLoading] = useState(false)
    const dispatch = useDispatch()
-   const {courseData} = useSelector(state=>state.course)
+  const {courseData, creatorCourseData} = useSelector(state=>state.course)
 
 
 
@@ -50,8 +50,11 @@ function AddCourses() {
     setCategory(selectedCourse.category || "")
     setLevel(selectedCourse.level || "")
     setPrice(selectedCourse.price || "")
-    setFrontendImage(selectedCourse.thumbnail || img)
-    setIsPublished(selectedCourse?.isPublished)
+    const thumbUrl = selectedCourse.thumbnail
+      ? (selectedCourse.thumbnail.startsWith('http') ? selectedCourse.thumbnail : `${serverUrl}${selectedCourse.thumbnail}`)
+      : img
+    setFrontendImage(thumbUrl)
+    setIsPublished(Boolean(selectedCourse?.isPublished))
 
 
   }
@@ -77,8 +80,8 @@ const editCourseHandler = async () => {
   formData.append("category", category);
   formData.append("level", level);
   formData.append("price", price);
-  formData.append("thumbnail", backendImage);
-  formData.append("isPublished", isPublished);
+  if (backendImage) formData.append("thumbnail", backendImage);
+  formData.append("isPublished", isPublished ? "true" : "false");
 
   try {
     const result = await axios.post(
@@ -88,6 +91,8 @@ const editCourseHandler = async () => {
     );
 
     const updatedCourse = result.data;
+
+    // Update student-facing course list
     if (updatedCourse.isPublished) {
       const updatedCourses = courseData.map(c =>
         c._id === courseId ? updatedCourse : c
@@ -100,6 +105,15 @@ const editCourseHandler = async () => {
       const filteredCourses = courseData.filter(c => c._id !== courseId);
       dispatch(setCourseData(filteredCourses));
     }
+
+    // Update creator-facing course list
+    const updatedCreatorCourses = creatorCourseData.map(c =>
+      c._id === courseId ? updatedCourse : c
+    );
+    if (!creatorCourseData.some(c => c._id === courseId)) {
+      updatedCreatorCourses.push(updatedCourse);
+    }
+    dispatch(setCreatorCourseData(updatedCreatorCourses));
 
     navigate("/courses");
     toast.success("Course Updated");

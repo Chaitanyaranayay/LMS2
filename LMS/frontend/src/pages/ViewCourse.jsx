@@ -26,7 +26,6 @@ function ViewCourse() {
   const [selectedCreatorCourse,setSelectedCreatorCourse] = useState([])
    const [rating, setRating] = useState(0);
    const [comment, setComment] = useState("");
-   const [paymentMethod, setPaymentMethod] = useState("all");
    
    
   
@@ -81,7 +80,7 @@ console.log("Average Rating:", avgRating);
         method: 'POST',
         credentials: 'include',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ courseId, method: paymentMethod })
+        body: JSON.stringify({ courseId })
       })
       if (!createRes.ok) {
         const err = await createRes.json().catch(() => null)
@@ -97,7 +96,6 @@ console.log("Average Rating:", avgRating);
         name: 'QuestEd',
         description: selectedCourseData?.title || 'Course purchase',
         order_id: order.id,
-        ...(paymentMethod !== 'all' && { method: { [paymentMethod]: true } }),
         handler: async function (response) {
           // 3) verify payment on server
           const verifyRes = await fetch('/api/payment/verify', {
@@ -213,30 +211,59 @@ console.log("Average Rating:", avgRating);
             </ul>
 
             {/* Enroll Button */}
-            <div className="flex gap-3 flex-col">
-              <div>
-                <label className="block text-sm font-semibold mb-1">Payment Method:</label>
-                <select 
-                  value={paymentMethod}
-                  onChange={(e) => setPaymentMethod(e.target.value)}
-                  className="w-full border border-gray-300 rounded px-3 py-2"
-                >
-                  <option value="all">All Methods</option>
-                  <option value="upi">UPI</option>
-                  <option value="card">Card</option>
-                  <option value="netbanking">Netbanking</option>
-                  <option value="wallet">Wallet</option>
-                </select>
+            {userData?.role === "educator" ? (
+              <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-4">
+                <p className="text-yellow-800 font-semibold">
+                  ℹ️ Educators cannot enroll in courses
+                </p>
+                <p className="text-sm text-yellow-700 mt-1">
+                  Your account is set up for creating and selling courses only.
+                </p>
               </div>
-              <div className="flex gap-3">
-                <button className="bg-green-200 text-green-600 px-6 py-2 rounded hover:bg-gray-100 hover:border" onClick={()=>navigate(`/viewlecture/${courseId}`)}>
-                 Watch Now
-                </button>
-                <button className="bg-blue-600 text-white px-6 py-2 rounded hover:bg-blue-700" onClick={handleBuy}>
-                  Buy this course
-                </button>
-              </div>
-            </div>
+            ) : (
+              <>
+                {/* Check if user is already enrolled */}
+                {userData?.enrolledCourses?.some(
+                  enrollment => enrollment.course?._id === courseId || enrollment.course === courseId || enrollment === courseId
+                ) ? (
+                  <button 
+                    className="w-full bg-green-600 text-white px-6 py-3 rounded-lg font-semibold hover:bg-green-700 transition"
+                    onClick={() => navigate(`/viewlecture/${courseId}`)}
+                  >
+                    ✓ Already Enrolled - Continue Learning →
+                  </button>
+                ) : (
+                  <div className="flex gap-3 flex-col">
+                    {/* Test Mode Warning */}
+                    <div className="bg-yellow-50 border-l-4 border-yellow-400 p-4 rounded">
+                      <div className="flex items-start">
+                        <div className="flex-shrink-0">
+                          <svg className="h-5 w-5 text-yellow-400" viewBox="0 0 20 20" fill="currentColor">
+                            <path fillRule="evenodd" d="M8.257 3.099c.765-1.36 2.722-1.36 3.486 0l5.58 9.92c.75 1.334-.213 2.98-1.742 2.98H4.42c-1.53 0-2.493-1.646-1.743-2.98l5.58-9.92zM11 13a1 1 0 11-2 0 1 1 0 012 0zm-1-8a1 1 0 00-1 1v3a1 1 0 002 0V6a1 1 0 00-1-1z" clipRule="evenodd" />
+                          </svg>
+                        </div>
+                        <div className="ml-3">
+                          <p className="text-sm font-semibold text-yellow-800">Test Mode - No Real Charges</p>
+                          <p className="text-xs text-yellow-700 mt-1">
+                            Use test card: <code className="bg-yellow-100 px-2 py-1 rounded">4111 1111 1111 1111</code> | CVV: Any 3 digits | Expiry: Any future date
+                          </p>
+                        </div>
+                      </div>
+                    </div>
+
+                    <button 
+                      className="w-full bg-blue-600 text-white px-6 py-3 rounded-lg font-semibold hover:bg-blue-700 transition text-lg"
+                      onClick={handleBuy}
+                    >
+                      🎓 Enroll Now - ₹{selectedCourseData?.price}
+                    </button>
+                    <p className="text-xs text-gray-500 text-center">
+                      Lifetime access • Certificate of completion • 30-day money-back guarantee
+                    </p>
+                  </div>
+                )}
+              </>
+            )}
           </div>
         </div>
 

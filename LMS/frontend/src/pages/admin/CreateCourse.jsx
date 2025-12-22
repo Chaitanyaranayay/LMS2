@@ -1,4 +1,4 @@
-import axios from "axios";
+﻿import axios from "axios";
 import React, { useState } from "react";
 import { FaArrowLeftLong } from "react-icons/fa6";
 import { useNavigate } from "react-router-dom";
@@ -14,18 +14,18 @@ const CreateCourse = () => {
     const CreateCourseHandler = async () => {
         setLoading(true)
         try {
-            const result = await axios.post(serverUrl + "/api/course/create" , {title , category} , {withCredentials:true})
-            console.log(result.data)
-            toast.success("Course Created")
+            const createRes = await axios.post(serverUrl + "/api/course/create" , {title , category} , {withCredentials:true})
+            console.log("Course created:", createRes.data)
+            toast.success("Course Created Successfully! Add thumbnail by editing the course.")
             navigate("/courses")
             setTitle("")
+            setCategory("")
             setLoading(false)
         } catch (error) {
             console.log(error)
             setLoading(false)
-            toast.error(error.response.data.message)
+            toast.error(error.response?.data?.message || "Failed to create course")
         }
-        
     }
 
     return (
@@ -60,10 +60,9 @@ const CreateCourse = () => {
                         >
                             <option value="">Select category</option>
                             <option value="App Development">App Development</option>
-                             <option value="AI/ML">AI/ML</option>
-                            <option value="AI Tools">AI Tools
-                            </option>
-                             <option value="Data Science">Data Science</option>
+                            <option value="AI/ML">AI/ML</option>
+                            <option value="AI Tools">AI Tools</option>
+                            <option value="Data Science">Data Science</option>
                             <option value="Data Analytics">Data Analytics</option>
                             <option value="Ethical Hacking">Ethical Hacking</option>
                             <option value="UI UX Designing">UI UX Designing</option>

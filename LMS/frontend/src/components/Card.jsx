@@ -1,23 +1,27 @@
 import React from "react";
 import { FaStar } from "react-icons/fa";
 import { useNavigate } from "react-router-dom";
+import { serverUrl } from "../App";
 const CourseCard = ({ thumbnail, title, category, price ,id , reviews }) => {
   const navigate = useNavigate()
-   const calculateAverageRating = (reviews) => {
-  if (!reviews || reviews.length === 0) return 0;
+  const calculateAverageRating = (reviews) => {
+    if (!reviews || !Array.isArray(reviews) || reviews.length === 0) return 0;
+    
+    const total = reviews.reduce((sum, review) => sum + review.rating, 0);
+    return (total / reviews.length).toFixed(1); // rounded to 1 decimal
+  };
 
-  const total = reviews.reduce((sum, review) => sum + review.rating, 0);
-  return (total / reviews.length).toFixed(1); // rounded to 1 decimal
-};
+  // Usage:
+  const avgRating = calculateAverageRating(reviews);
+  const thumb = thumbnail
+    ? (thumbnail.startsWith('http') ? thumbnail : `${serverUrl}${thumbnail}`)
+    : "";
 
-// Usage:
-const avgRating = calculateAverageRating(reviews);
-console.log("Average Rating:", avgRating);
   return (
     <div className="max-w-sm w-full bg-white rounded-2xl overflow-hidden shadow-md hover:shadow-lg transition-all duration-300 border border-gray-300" onClick={()=>navigate(`/viewcourse/${id}`)}>
       {/* Thumbnail */}
       <img
-        src={thumbnail}
+        src={thumb}
         alt={title}
         className="w-full h-48 object-cover"
       />

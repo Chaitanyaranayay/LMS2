@@ -2,9 +2,6 @@ import { GoogleGenerativeAI } from "@google/generative-ai"
 import Course from "../models/courseModel.js"
 import Lecture from "../models/lectureModel.js"
 
-// Initialize Gemini AI
-const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY || "")
-
 // Gemini AI search - analyzes user query and finds relevant courses/lectures
 const geminiAISearch = async (query) => {
   try {
@@ -13,6 +10,7 @@ const geminiAISearch = async (query) => {
       return await keywordSearch(query)
     }
 
+    const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY)
     const model = genAI.getGenerativeModel({ model: "gemini-1.5-flash" })
 
     // First, get all courses from DB
