@@ -43,7 +43,9 @@ export const getPublishedCourses = async (req,res) => {
 export const getCreatorCourses = async (req,res) => {
     try {
         const userId = req.userId
+        // Populate enrolledStudents to show enrollment count and details
         const courses = await Course.find({creator:userId})
+            .populate('enrolledStudents', 'name email photoUrl')
         if(!courses)
         {
             return res.status(404).json({message:"Course not found"})
@@ -80,7 +82,11 @@ export const editCourse = async (req,res) => {
 export const getCourseById = async (req,res) => {
     try {
         const {courseId} = req.params
+        // Populate enrolledStudents to show who has enrolled (with basic info only)
         let course = await Course.findById(courseId)
+            .populate('enrolledStudents', 'name email photoUrl')
+            .populate('creator', 'name photoUrl')
+        
         if(!course){
             return res.status(404).json({message:"Course not found"})
         }

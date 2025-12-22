@@ -3,8 +3,6 @@ import dotenv from "dotenv"
 import connectDb from "./configs/db.js"
 import authRouter from "./routes/authRoute.js"
 import cookieParser from "cookie-parser"
-import fs from 'fs'
-import https from 'https'
 import cors from "cors"
 import userRouter from "./routes/userRoute.js"
 import courseRouter from "./routes/courseRoute.js"
@@ -47,7 +45,7 @@ const limiter = rateLimit({
 app.use(limiter)
 
 app.use(cors({
-    origin: ["http://localhost:5173", "https://localhost:5173"],
+    origin: "http://localhost:5173",
     credentials: true,
 }))
 
@@ -62,25 +60,13 @@ app.get("/", (req, res) => {
     res.send("Hello From Server")
 })
 
-// Start server: prefer HTTPS when cert files are provided via env
+// Start server
 const startServer = async () => {
     try {
         await connectDb()
-
-        const sslKeyPath = process.env.SSL_KEY_PATH
-        const sslCertPath = process.env.SSL_CERT_PATH
-
-        if (sslKeyPath && sslCertPath && fs.existsSync(sslKeyPath) && fs.existsSync(sslCertPath)) {
-            const key = fs.readFileSync(sslKeyPath)
-            const cert = fs.readFileSync(sslCertPath)
-            https.createServer({ key, cert }, app).listen(port, () => {
-                console.log(`HTTPS Server started on port ${port}`)
-            })
-        } else {
-            app.listen(port, () => {
-                console.log("HTTP Server Started on port", port)
-            })
-        }
+        app.listen(port, () => {
+            console.log("Server Started on port", port)
+        })
     } catch (err) {
         console.error('Failed to start server:', err)
         process.exit(1)

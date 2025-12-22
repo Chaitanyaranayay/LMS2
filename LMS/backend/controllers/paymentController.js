@@ -2,32 +2,40 @@ import Razorpay from "razorpay"
 import Course from "../models/courseModel.js"
 import Order from "../models/orderModel.js"
 import User from "../models/userModel.js"
-import crypto from "crypto"
+import crypto from "crypto" // Built-in Node.js module for security verification
 
+// Initialize Razorpay with your API keys
 const razorpay = new Razorpay({
   key_id: process.env.RAZORPAY_KEY_ID,
   key_secret: process.env.RAZORPAY_KEY_SECRET,
 })
 
+// ========================================
+// STEP 1: CREATE PAYMENT ORDER
+// ========================================
+// When user clicks "Buy Course", this creates a Razorpay order
 export const createRazorpayOrder = async (req, res) => {
   try {
-    const userId = req.userId // requires isAuth
+    const userId = req.userId // From authentication middleware
     const { courseId, method } = req.body
+    
+    // Find the course
     const course = await Course.findById(courseId)
     if (!course) return res.status(404).json({ message: "Course not found" })
 
+    // Calculate amount (Razorpay needs paisa, not rupees)
     const amountINPaisa = Math.round((course.price || 0) * 100)
     if (amountINPaisa <= 0) return res.status(400).json({ message: "Invalid amount" })
 
-    const options = {
+    // Create Razorpay order
+    const rpOrder = await razorpay.orders.create({
       amount: amountINPaisa,
       currency: "INR",
       receipt: `rcpt_${Date.now()}`,
-      payment_capture: 1, // auto-capture
-    }
+      payment_capture: 1, // Auto-capture payment when successful
+    })
 
-  const rpOrder = await razorpay.orders.create(options)
-
+    // Save order in our database
     const order = await Order.create({
       course: course._id,
       student: userId,
@@ -38,39 +46,118 @@ export const createRazorpayOrder = async (req, res) => {
       method: method || "all",
     })
 
-    const mode = process.env.RAZORPAY_MODE || (String(process.env.RAZORPAY_KEY_ID || "").startsWith("rzp_test_") ? "test" : "live")
-    return res.status(201).json({ key: process.env.RAZORPAY_KEY_ID, order: rpOrder, localOrderId: order._id, mode, method: method || "all" })
+    // Send order details to frontend
+    const mode = process.env.RAZORPAY_KEY_ID?.startsWith("rzp_test_") ? "test" : "live"
+    return res.status(201).json({ 
+      key: process.env.RAZORPAY_KEY_ID, 
+      order: rpOrder, 
+      localOrderId: order._id, 
+      mode, 
+      method: method || "all" 
+    })
   } catch (err) {
-    console.error("createRazorpayOrder error:", err)
+    console.error("Create order error:", err)
     return res.status(500).json({ message: "Server error" })
   }
 }
 
-// webhook handler for Razorpay (recommended for production)
+// ========================================
+// HELPER: ENROLL USER IN COURSE
+// ========================================
+// This adds the course to user's enrolled list and vice versa
+const enrollUserInCourse = async (courseId, userId) => {
+  try {
+    // Add student to course's enrolled list
+    await Course.updateOne(
+      { _id: courseId }, 
+      { $addToSet: { enrolledStudents: userId } }
+    )
+    
+    // Add course to user's enrolled list
+    await User.updateOne(
+      { _id: userId }, 
+      { $addToSet: { enrolledCourses: courseId } }
+    )
+  } catch (err) {
+    console.error("Enrollment error:", err)
+  }
+}
+
+// ========================================
+// STEP 2: VERIFY PAYMENT (Frontend calls this)
+// ========================================
+// After payment, frontend sends payment details here for verification
+export const verifyPayment = async (req, res) => {
+  try {
+    const { razorpay_order_id, razorpay_payment_id, razorpay_signature } = req.body
+
+    // SECURITY CHECK: Verify this payment is genuine
+    // Create a signature using Razorpay's secret key
+    const expected_signature = crypto
+      .createHmac("sha256", process.env.RAZORPAY_KEY_SECRET) // HMAC = Hash-based Message Authentication Code
+      .update(`${razorpay_order_id}|${razorpay_payment_id}`) // Combine order ID and payment ID
+      .digest("hex") // Convert to hexadecimal string
+
+    // Compare signatures - if they don't match, payment is fake!
+    if (expected_signature !== razorpay_signature) {
+      return res.status(400).json({ message: "Invalid signature - Payment verification failed" })
+    }
+
+    // Find the order
+    const order = await Order.findOne({ razorpay_order_id })
+    if (!order) return res.status(404).json({ message: "Order not found" })
+    if (order.isPaid) return res.status(400).json({ message: "Order already paid" })
+
+    // Mark order as paid
+    order.razorpay_payment_id = razorpay_payment_id
+    order.razorpay_signature = razorpay_signature
+    order.isPaid = true
+    order.paidAt = new Date()
+    await order.save()
+
+    // Enroll user in the course
+    await enrollUserInCourse(order.course, order.student)
+
+    return res.status(200).json({ message: "Payment verified! Course enrolled successfully" })
+  } catch (err) {
+    console.error("Payment verification error:", err)
+    return res.status(500).json({ message: "Server error" })
+  }
+}
+
+// ========================================
+// STEP 3: WEBHOOK (Razorpay calls this automatically)
+// ========================================
+// Razorpay sends payment updates to this endpoint for extra security
 export const handleRazorpayWebhook = async (req, res) => {
   try {
     const webhookSecret = process.env.RAZORPAY_WEBHOOK_SECRET
     const signature = req.headers['x-razorpay-signature']
 
+    // If webhook secret not configured, skip
     if (!webhookSecret) {
-      console.warn('Razorpay webhook received but RAZORPAY_WEBHOOK_SECRET is not configured')
-      return res.status(501).json({ message: 'Webhook not configured on server' })
+      console.warn('Webhook secret not configured')
+      return res.status(501).json({ message: 'Webhook not configured' })
     }
 
-    // `req.body` is a Buffer because the route should use express.raw middleware
-    const rawBody = req.body
-    const expected = crypto.createHmac('sha256', webhookSecret).update(rawBody).digest('hex')
+    // SECURITY CHECK: Verify webhook is from Razorpay
+    const rawBody = req.body // Raw request body (Buffer)
+    const expected = crypto
+      .createHmac('sha256', webhookSecret)
+      .update(rawBody)
+      .digest('hex')
 
     if (expected !== signature) {
-      console.warn('Invalid Razorpay webhook signature', { expected, signature })
+      console.warn('Invalid webhook signature')
       return res.status(400).json({ message: 'Invalid signature' })
     }
 
+    // Parse webhook data
     const payload = JSON.parse(rawBody.toString())
-    // handle important events (payment.captured, payment.authorized, order.paid etc.)
     const event = payload.event
     console.log('Razorpay webhook event:', event)
 
+    // Handle payment success events
     if (event === 'payment.captured' || event === 'payment.authorized') {
       const paymentEntity = payload.payload?.payment?.entity
       const razorpay_order_id = paymentEntity?.order_id
@@ -78,75 +165,23 @@ export const handleRazorpayWebhook = async (req, res) => {
 
       if (razorpay_order_id && razorpay_payment_id) {
         const order = await Order.findOne({ razorpay_order_id })
+        
+        // Update order and enroll user
         if (order && !order.isPaid) {
           order.razorpay_payment_id = razorpay_payment_id
           order.isPaid = true
           order.paidAt = new Date()
           await order.save()
 
-          // enroll user (idempotent)
-          const courseId = order.course
-          const userId = order.student
-          if (courseId && userId) {
-            try {
-              await Course.updateOne({ _id: courseId }, { $addToSet: { enrolledStudents: userId } }).exec()
-              await User.updateOne({ _id: userId }, { $addToSet: { enrolledCourses: courseId } }).exec()
-            } catch (updateErr) {
-              console.error('webhook enrollment update error:', updateErr)
-            }
-          }
+          // Enroll user in course
+          await enrollUserInCourse(order.course, order.student)
         }
       }
     }
 
-    // acknowledge receipt
     return res.status(200).json({ status: 'ok' })
   } catch (err) {
-    console.error('handleRazorpayWebhook error:', err)
+    console.error('Webhook error:', err)
     return res.status(500).json({ message: 'Server error' })
-  }
-}
-
-export const verifyPayment = async (req, res) => {
-  try {
-    const { razorpay_order_id, razorpay_payment_id, razorpay_signature } = req.body
-
-    const expected_signature = crypto
-      .createHmac("sha256", process.env.RAZORPAY_KEY_SECRET)
-      .update(`${razorpay_order_id}|${razorpay_payment_id}`)
-      .digest("hex")
-
-    if (expected_signature !== razorpay_signature) {
-      return res.status(400).json({ message: "Invalid signature" })
-    }
-
-    const order = await Order.findOne({ razorpay_order_id })
-    if (!order) return res.status(404).json({ message: "Order not found" })
-    if (order.isPaid) return res.status(400).json({ message: "Order already paid" })
-
-    order.razorpay_payment_id = razorpay_payment_id
-    order.razorpay_signature = razorpay_signature
-    order.isPaid = true
-    order.paidAt = new Date()
-    await order.save()
-
-    // Enroll user idempotently using atomic updates to avoid triggering full document validation
-    // (some Course documents in the DB may have invalid enum values which cause save() to fail)
-    const courseId = order.course
-    const userId = order.student
-    if (courseId && userId) {
-      try {
-        // addToSet avoids duplicates and doesn't load the full document (so it avoids validation errors)
-        await Course.updateOne({ _id: courseId }, { $addToSet: { enrolledStudents: userId } }).exec()
-        await User.updateOne({ _id: userId }, { $addToSet: { enrolledCourses: courseId } }).exec()
-      } catch (updateErr) {
-        console.error('verifyPayment enrollment update error:', updateErr)
-      }
-    }
-
-    return res.status(200).json({ message: "Payment verified and enrolled" })
-  } catch (err) {
-    console.error("verifyPayment error:", err)
-    return res.status(500).json({ message: "Server error" })
   }
 }

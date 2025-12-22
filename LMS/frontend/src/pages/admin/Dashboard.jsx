@@ -81,6 +81,57 @@ function Dashboard() {
             </ResponsiveContainer>
           </div>
         </div>
+
+        {/* Course Details Table */}
+        <div className="max-w-6xl mx-auto bg-white rounded-lg shadow-md p-6">
+          <h2 className="text-lg font-semibold mb-4">Your Courses Overview</h2>
+          <div className="overflow-x-auto">
+            <table className="w-full text-left">
+              <thead className="border-b-2 border-gray-200">
+                <tr>
+                  <th className="py-3 px-4 font-semibold">Course Name</th>
+                  <th className="py-3 px-4 font-semibold">Students</th>
+                  <th className="py-3 px-4 font-semibold">Lectures</th>
+                  <th className="py-3 px-4 font-semibold">Price</th>
+                  <th className="py-3 px-4 font-semibold">Revenue</th>
+                  <th className="py-3 px-4 font-semibold">Actions</th>
+                </tr>
+              </thead>
+              <tbody>
+                {creatorCourseData?.map((course) => {
+                  const studentCount = course.enrolledStudents?.length || 0
+                  const revenue = (course.price || 0) * studentCount
+                  return (
+                    <tr key={course._id} className="border-b border-gray-100 hover:bg-gray-50">
+                      <td className="py-3 px-4 font-medium">{course.title}</td>
+                      <td className="py-3 px-4">
+                        <span className="px-3 py-1 bg-purple-100 text-purple-700 rounded-full font-semibold">
+                          {studentCount}
+                        </span>
+                      </td>
+                      <td className="py-3 px-4">{course.lectures?.length || 0}</td>
+                      <td className="py-3 px-4">₹{course.price || 0}</td>
+                      <td className="py-3 px-4 font-semibold text-green-600">₹{revenue.toLocaleString()}</td>
+                      <td className="py-3 px-4">
+                        <button 
+                          onClick={() => navigate(`/enrolled-students/${course._id}`)}
+                          className="px-4 py-1 bg-blue-600 text-white rounded hover:bg-blue-700 transition text-sm"
+                        >
+                          View Students
+                        </button>
+                      </td>
+                    </tr>
+                  )
+                })}
+              </tbody>
+            </table>
+            {!creatorCourseData || creatorCourseData.length === 0 && (
+              <div className="text-center py-8 text-gray-500">
+                No courses created yet. Start by creating your first course!
+              </div>
+            )}
+          </div>
+        </div>
       </div>
     </div>
   )

@@ -16,6 +16,7 @@ import AddCourses from './pages/admin/AddCourses'
 import CreateCourse from './pages/admin/CreateCourse'
 import CreateLecture from './pages/admin/CreateLecture'
 import EditLecture from './pages/admin/EditLecture'
+import EnrolledStudents from './pages/admin/EnrolledStudents'
 
 import getCouseData from './customHooks/getCouseData'
 import ViewCourse from './pages/ViewCourse'
@@ -57,6 +58,7 @@ function App() {
         
         <Route path='/dashboard' element={userData?.role === "educator"?<Dashboard/>:<Navigate to={"/signup"}/>}/>
         <Route path='/courses' element={userData?.role === "educator"?<Courses/>:<Navigate to={"/signup"}/>}/>
+        <Route path='/enrolled-students/:courseId' element={userData?.role === "educator"?<EnrolledStudents/>:<Navigate to={"/signup"}/>}/>
         <Route path='/addcourses/:courseId' element={userData?.role === "educator"?<AddCourses/>:<Navigate to={"/signup"}/>}/>
         <Route path='/createcourses' element={userData?.role === "educator"?<CreateCourse/>:<Navigate to={"/signup"}/>}/>
         <Route path='/createlecture/:courseId' element={userData?.role === "educator"?<CreateLecture/>:<Navigate to={"/signup"}/>}/>
