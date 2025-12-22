@@ -10,6 +10,7 @@ import userRouter from "./routes/userRoute.js"
 import courseRouter from "./routes/courseRoute.js"
 import reviewRouter from "./routes/reviewRoute.js"
 import paymentRouter from "./routes/paymentRoute.js"
+import aiRouter from "./routes/aiRoute.js"
 import helmet from "helmet"
 import rateLimit from "express-rate-limit"
 import bodyParser from 'body-parser'
@@ -46,7 +47,7 @@ const limiter = rateLimit({
 app.use(limiter)
 
 app.use(cors({
-    origin: "http://localhost:5173",
+    origin: ["http://localhost:5173", "https://localhost:5173"],
     credentials: true,
 }))
 
@@ -55,6 +56,7 @@ app.use("/api/user", userRouter)
 app.use("/api/course", courseRouter)
 app.use("/api/review", reviewRouter)
 app.use("/api/payment", paymentRouter)
+app.use("/api/ai", aiRouter)
 
 app.get("/", (req, res) => {
     res.send("Hello From Server")

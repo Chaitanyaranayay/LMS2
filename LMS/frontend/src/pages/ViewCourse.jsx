@@ -26,6 +26,7 @@ function ViewCourse() {
   const [selectedCreatorCourse,setSelectedCreatorCourse] = useState([])
    const [rating, setRating] = useState(0);
    const [comment, setComment] = useState("");
+   const [paymentMethod, setPaymentMethod] = useState("all");
    
    
   
@@ -75,12 +76,12 @@ console.log("Average Rating:", avgRating);
   // Razorpay flow: create order on server, open checkout, verify on server
   const handleBuy = async () => {
     try {
-      // 1) create order on server
+      // 1) create order on server with payment method
       const createRes = await fetch('/api/payment/create-order', {
         method: 'POST',
         credentials: 'include',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ courseId })
+        body: JSON.stringify({ courseId, method: paymentMethod })
       })
       if (!createRes.ok) {
         const err = await createRes.json().catch(() => null)
@@ -96,6 +97,7 @@ console.log("Average Rating:", avgRating);
         name: 'QuestEd',
         description: selectedCourseData?.title || 'Course purchase',
         order_id: order.id,
+        ...(paymentMethod !== 'all' && { method: { [paymentMethod]: true } }),
         handler: async function (response) {
           // 3) verify payment on server
           const verifyRes = await fetch('/api/payment/verify', {
@@ -211,13 +213,29 @@ console.log("Average Rating:", avgRating);
             </ul>
 
             {/* Enroll Button */}
-            <div className="flex gap-3">
-              <button className="bg-green-200 text-green-600 px-6 py-2 rounded hover:bg-gray-100 hover:border mt-3" onClick={()=>navigate(`/viewlecture/${courseId}`)}>
-               Watch Now
-              </button>
-              <button className="bg-blue-600 text-white px-6 py-2 rounded hover:bg-blue-700 mt-3" onClick={handleBuy}>
-                Buy this course
-              </button>
+            <div className="flex gap-3 flex-col">
+              <div>
+                <label className="block text-sm font-semibold mb-1">Payment Method:</label>
+                <select 
+                  value={paymentMethod}
+                  onChange={(e) => setPaymentMethod(e.target.value)}
+                  className="w-full border border-gray-300 rounded px-3 py-2"
+                >
+                  <option value="all">All Methods</option>
+                  <option value="upi">UPI</option>
+                  <option value="card">Card</option>
+                  <option value="netbanking">Netbanking</option>
+                  <option value="wallet">Wallet</option>
+                </select>
+              </div>
+              <div className="flex gap-3">
+                <button className="bg-green-200 text-green-600 px-6 py-2 rounded hover:bg-gray-100 hover:border" onClick={()=>navigate(`/viewlecture/${courseId}`)}>
+                 Watch Now
+                </button>
+                <button className="bg-blue-600 text-white px-6 py-2 rounded hover:bg-blue-700" onClick={handleBuy}>
+                  Buy this course
+                </button>
+              </div>
             </div>
           </div>
         </div>

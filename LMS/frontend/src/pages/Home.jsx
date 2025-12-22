@@ -30,6 +30,7 @@ function Home() {
         <div className='absolute lg:top-[30%] top-[75%]  md:top-[80%] w-[100%] flex items-center justify-center gap-3 flex-wrap'>
           
       <button className='px-[20px] py-[10px] border-2 lg:border-white border-black lg:text-white text-black rounded-[10px] text-[18px] font-light flex gap-2 cursor-pointer' onClick={()=>navigate("/allcourses")}>View all Courses <SiViaplay className='w-[30px] h-[30px] lg:fill-white fill-black' /></button>
+      <button className='px-[20px] py-[10px] bg-white lg:bg-white bg-white lg:text-purple-600 text-purple-600 rounded-[10px] text-[18px] font-light flex gap-2 cursor-pointer hover:opacity-90 transition' onClick={()=>navigate("/ai-search")}>🔍 AI Course Search</button>
       </div>
       </div>
       <Logos/>

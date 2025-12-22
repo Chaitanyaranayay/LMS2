@@ -25,6 +25,7 @@ import getCreatorCourseData from './customHooks/getCreatorCourseData'
 import EnrolledCourse from './pages/EnrolledCourse'
 import ViewLecture from './pages/ViewLecture'
 import getAllReviews from './customHooks/getAllReviews'
+import AISearch from './pages/AISearch'
 
 export const serverUrl = ""
 
@@ -48,6 +49,7 @@ function App() {
         <Route path='/profile' element={userData?<Profile/>:<Navigate to={"/signup"}/>}/>
         <Route path='/allcourses' element={userData?<AllCouses/>:<Navigate to={"/signup"}/>}/>
         <Route path='/viewcourse/:courseId' element={userData?<ViewCourse/>:<Navigate to={"/signup"}/>}/>
+        <Route path='/ai-search' element={userData?<AISearch/>:<Navigate to={"/signup"}/>}/>
         <Route path='/editprofile' element={userData?<EditProfile/>:<Navigate to={"/signup"}/>}/>
         <Route path='/enrolledcourses' element={userData?<EnrolledCourse/>:<Navigate to={"/signup"}/>}/>
          <Route path='/viewlecture/:courseId' element={userData?<ViewLecture/>:<Navigate to={"/signup"}/>}/>

@@ -12,7 +12,7 @@ const razorpay = new Razorpay({
 export const createRazorpayOrder = async (req, res) => {
   try {
     const userId = req.userId // requires isAuth
-    const { courseId } = req.body
+    const { courseId, method } = req.body
     const course = await Course.findById(courseId)
     if (!course) return res.status(404).json({ message: "Course not found" })
 
@@ -35,10 +35,11 @@ export const createRazorpayOrder = async (req, res) => {
       amount: amountINPaisa,
       currency: "INR",
       isPaid: false,
+      method: method || "all",
     })
 
     const mode = process.env.RAZORPAY_MODE || (String(process.env.RAZORPAY_KEY_ID || "").startsWith("rzp_test_") ? "test" : "live")
-    return res.status(201).json({ key: process.env.RAZORPAY_KEY_ID, order: rpOrder, localOrderId: order._id, mode })
+    return res.status(201).json({ key: process.env.RAZORPAY_KEY_ID, order: rpOrder, localOrderId: order._id, mode, method: method || "all" })
   } catch (err) {
     console.error("createRazorpayOrder error:", err)
     return res.status(500).json({ message: "Server error" })
