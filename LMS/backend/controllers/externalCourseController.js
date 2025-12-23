@@ -42,7 +42,7 @@ const searchYouTubeCourses = async (query) => {
       title: item.snippet.title,
       description: item.snippet.description,
       price: 'Free',
-      thumbnail: item.snippet.thumbnails?.medium?.url || item.snippet.thumbnails?.default?.url || '',
+      thumbnail: item.snippet.thumbnails?.high?.url || item.snippet.thumbnails?.medium?.url || item.snippet.thumbnails?.default?.url || '',
       url: `https://www.youtube.com/watch?v=${item.id.videoId}`,
       rating: null,
       reviews: null,
@@ -84,7 +84,11 @@ export const intelligentCourseSearch = async (req, res) => {
         title: course.title,
         description: course.description,
         price: course.price,
-        thumbnail: course.thumbnail,
+        thumbnail: course.thumbnail?.startsWith('http') 
+          ? course.thumbnail 
+          : course.thumbnail 
+            ? `${process.env.SERVER_URL || 'http://localhost:8000'}${course.thumbnail}`
+            : null,
         url: `/viewcourse/${course._id}`,
         rating: course.reviews?.length > 0 
           ? course.reviews.reduce((sum, r) => sum + r.rating, 0) / course.reviews.length 
