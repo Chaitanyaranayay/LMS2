@@ -68,7 +68,7 @@ function Courses() {
             <tbody>
               {creatorCourseData?.map((course, index) => {
                 const thumb = course?.thumbnail
-                  ? (course.thumbnail.startsWith('http') ? course.thumbnail : `${serverUrl}${course.thumbnail}`)
+                  ? ((course.thumbnail.startsWith('http') || course.thumbnail.startsWith('blob:') || course.thumbnail.startsWith('data:')) ? course.thumbnail : `${serverUrl}${course.thumbnail}`)
                   : img1
                 return (
 
@@ -108,7 +108,7 @@ function Courses() {
         <div className="md:hidden space-y-4">
           {creatorCourseData?.map((course, index) => {
             const thumb = course?.thumbnail
-              ? (course.thumbnail.startsWith('http') ? course.thumbnail : `${serverUrl}${course.thumbnail}`)
+              ? ((course.thumbnail.startsWith('http') || course.thumbnail.startsWith('blob:') || course.thumbnail.startsWith('data:')) ? course.thumbnail : `${serverUrl}${course.thumbnail}`)
               : img1
             return (
             <div key={index}

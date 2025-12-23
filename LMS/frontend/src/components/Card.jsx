@@ -2,6 +2,7 @@ import React from "react";
 import { FaStar } from "react-icons/fa";
 import { useNavigate } from "react-router-dom";
 import { serverUrl } from "../App";
+import placeholderImg from "../assets/empty.jpg";
 const CourseCard = ({ thumbnail, title, category, price ,id , reviews }) => {
   const navigate = useNavigate()
   const calculateAverageRating = (reviews) => {
@@ -14,8 +15,8 @@ const CourseCard = ({ thumbnail, title, category, price ,id , reviews }) => {
   // Usage:
   const avgRating = calculateAverageRating(reviews);
   const thumb = thumbnail
-    ? (thumbnail.startsWith('http') ? thumbnail : `${serverUrl}${thumbnail}`)
-    : "";
+    ? ((thumbnail.startsWith('http') || thumbnail.startsWith('blob:') || thumbnail.startsWith('data:')) ? thumbnail : `${serverUrl}${thumbnail}`)
+    : placeholderImg;
 
   return (
     <div className="max-w-sm w-full bg-white rounded-2xl overflow-hidden shadow-md hover:shadow-lg transition-all duration-300 border border-gray-300" onClick={()=>navigate(`/viewcourse/${id}`)}>
@@ -24,6 +25,7 @@ const CourseCard = ({ thumbnail, title, category, price ,id , reviews }) => {
         src={thumb}
         alt={title}
         className="w-full h-48 object-cover"
+        onError={(e) => { e.currentTarget.src = placeholderImg }}
       />
 
       {/* Content */}

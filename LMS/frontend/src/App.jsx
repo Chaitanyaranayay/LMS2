@@ -30,7 +30,8 @@ import AISearch from './pages/AISearch'
 import IntelligentSearch from './pages/IntelligentSearch'
 import Recommendations from './pages/Recommendations'
 
-export const serverUrl = ""
+// Prefer a Vite env var `VITE_SERVER_URL` in development. Fallback to localhost:4000.
+export const serverUrl = import.meta.env.VITE_SERVER_URL || "http://localhost:4000"
 
 function App() {
   

@@ -43,8 +43,8 @@ function EnrolledCourse() {
                 : null;
 
               const thumb = course?.thumbnail
-                ? (course.thumbnail.startsWith('http') ? course.thumbnail : `${serverUrl}${course.thumbnail}`)
-                : "";
+                ? ((course.thumbnail.startsWith('http') || course.thumbnail.startsWith('blob:') || course.thumbnail.startsWith('data:')) ? course.thumbnail : `${serverUrl}${course.thumbnail}`)
+                : 'https://via.placeholder.com/400x225?text=Course+Image';
               
               return (
                 <div

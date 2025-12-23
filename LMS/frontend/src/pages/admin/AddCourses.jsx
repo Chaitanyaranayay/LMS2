@@ -51,7 +51,7 @@ function AddCourses() {
     setLevel(selectedCourse.level || "")
     setPrice(selectedCourse.price || "")
     const thumbUrl = selectedCourse.thumbnail
-      ? (selectedCourse.thumbnail.startsWith('http') ? selectedCourse.thumbnail : `${serverUrl}${selectedCourse.thumbnail}`)
+      ? ((selectedCourse.thumbnail.startsWith('http') || selectedCourse.thumbnail.startsWith('blob:') || selectedCourse.thumbnail.startsWith('data:')) ? selectedCourse.thumbnail : `${serverUrl}${selectedCourse.thumbnail}`)
       : img
     setFrontendImage(thumbUrl)
     setIsPublished(Boolean(selectedCourse?.isPublished))

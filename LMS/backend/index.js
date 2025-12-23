@@ -36,8 +36,17 @@ app.use(cookieParser())
 // Helmet sets secure HTTP headers
 app.use(helmet())
 
-// Serve uploaded thumbnails/videos from /public
-app.use("/public", express.static("public"))
+// Serve uploaded thumbnails/videos from /public and set cross-origin headers
+app.use(
+    "/public",
+    express.static("public", {
+        setHeaders: (res, filePath) => {
+            // Allow images to be used cross-origin by the frontend dev server
+            res.setHeader('Cross-Origin-Resource-Policy', 'cross-origin')
+            res.setHeader('Access-Control-Allow-Origin', '*')
+        },
+    })
+)
 
 // Rate limiter: basic protection against brute-force & DOS-ish requests
 const limiter = rateLimit({
